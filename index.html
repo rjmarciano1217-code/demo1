@@ -1,0 +1,742 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Conway's Game of Life</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel-bg: #020617;
+      --grid-dead: #020617;
+      --grid-alive: #38bdf8;
+      --grid-gridline: #1e293b33;
+      --text: #e5e7eb;
+      --accent: #38bdf8;
+      --accent-soft: #0f766e;
+      --border: #1f2937;
+      --danger: #f97373;
+      --muted: #9ca3af;
+      --btn-bg: #111827;
+      --btn-bg-hover: #1f2937;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      background: radial-gradient(circle at top, #1f2937 0, #020617 55%, #000 100%);
+      color: var(--text);
+    }
+
+    .app {
+      display: flex;
+      flex-direction: row;
+      gap: 1.5rem;
+      margin: 1.5rem;
+      width: min(1200px, 100%);
+    }
+
+    .left, .right {
+      background: #020617dd;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      box-shadow:
+        0 18px 45px rgba(0,0,0,0.7),
+        0 0 0 1px rgba(148,163,184,0.1);
+      padding: 1rem 1.2rem;
+    }
+
+    .left {
+      flex: 1.4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
+    .right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    h1 span.sub {
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: var(--muted);
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      border: 1px solid #1e293b;
+      background: radial-gradient(circle at top, #1e293b 0, #020617 50%, #000 100%);
+    }
+
+    canvas {
+      display: block;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .status-bar span {
+      white-space: nowrap;
+    }
+
+    .controls-section {
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+      padding: 0.75rem 0.9rem;
+      background: linear-gradient(145deg, #020617, #020617, #020617, #020617);
+    }
+
+    .controls-section + .controls-section {
+      margin-top: 0.5rem;
+    }
+
+    .section-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .buttons-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    button {
+      border: 1px solid #111827;
+      background: var(--btn-bg);
+      color: var(--text);
+      padding: 0.35rem 0.7rem;
+      border-radius: 0.35rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      transition:
+        background 0.15s ease,
+        transform 0.05s ease,
+        box-shadow 0.15s ease,
+        border-color 0.15s ease;
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+    }
+
+    button span.key {
+      font-size: 0.7rem;
+      padding: 0.05rem 0.25rem;
+      border-radius: 0.25rem;
+      border: 1px solid #374151;
+      color: var(--muted);
+      background: #020617;
+    }
+
+    button.primary {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, #0284c7, #0ea5e9);
+      color: #e5f2ff;
+      box-shadow: 0 0 0 1px rgba(56,189,248,0.35), 0 14px 30px rgba(8,47,73,0.75);
+    }
+
+    button.primary:hover {
+      background: linear-gradient(135deg, #0ea5e9, #22c55e);
+      transform: translateY(-1px);
+      box-shadow: 0 18px 40px rgba(5,46,22,0.85);
+    }
+
+    button.danger {
+      border-color: rgba(252,165,165,0.4);
+      background: radial-gradient(circle at top left, #ef4444, #991b1b);
+    }
+
+    button.danger:hover {
+      background: radial-gradient(circle at top left, #f97373, #b91c1c);
+      transform: translateY(-1px);
+      box-shadow: 0 14px 30px rgba(127,29,29,0.85);
+    }
+
+    button:hover {
+      background: var(--btn-bg-hover);
+      border-color: #374151;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px rgba(15,23,42,0.9);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+    }
+
+    button.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(56,189,248,0.5);
+      background: radial-gradient(circle at top left, #0f172a, #020617);
+    }
+
+    .info {
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .info code {
+      font-size: 0.8rem;
+      padding: 0.05rem 0.2rem;
+      border-radius: 0.25rem;
+      background: #020617;
+      border: 1px solid #1f2937;
+    }
+
+    .kbd-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.4rem;
+    }
+
+    .kbd {
+      border-radius: 0.25rem;
+      border: 1px solid #1f2937;
+      padding: 0.1rem 0.35rem;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.75rem;
+      min-width: 1.3rem;
+      text-align: center;
+    }
+
+    .kbd-desc {
+      opacity: 0.85;
+    }
+
+    @media (max-width: 900px) {
+      .app {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 600px) {
+      body {
+        margin: 0;
+      }
+      .app {
+        margin: 0.5rem;
+      }
+      h1 {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="left">
+      <h1>
+        Conway's Game of Life
+        <span class="sub" id="wrap-label">Topology: Toroidal (wraparound)</span>
+      </h1>
+      <div class="canvas-wrapper">
+        <canvas id="lifeCanvas" width="720" height="480"></canvas>
+      </div>
+      <div class="status-bar">
+        <span id="status-text">Stopped</span>
+        <span id="stats-text">Gen: 0 · Alive: 0</span>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="controls-section">
+        <div class="section-title">Simulation</div>
+        <div class="buttons-row">
+          <button id="toggle-btn" class="primary">
+            <span id="toggle-label">Start</span>
+            <span class="key">Space</span>
+          </button>
+          <button id="step-btn">
+            Step
+          </button>
+          <button id="random-btn">
+            Random
+            <span class="key">R</span>
+          </button>
+          <button id="clear-btn" class="danger">
+            Clear
+            <span class="key">C</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="controls-section">
+        <div class="section-title">Patterns (click on grid to place)</div>
+        <div class="buttons-row">
+          <button class="pattern-btn" data-pattern="none" id="pattern-none-btn">
+            Free draw
+          </button>
+          <button class="pattern-btn" data-pattern="glider">
+            Glider
+            <span class="key">1</span>
+          </button>
+          <button class="pattern-btn" data-pattern="lwss">
+            LWSS
+            <span class="key">2</span>
+          </button>
+          <button class="pattern-btn" data-pattern="blinker">
+            Blinker
+            <span class="key">3</span>
+          </button>
+          <button class="pattern-btn" data-pattern="pulsar">
+            Pulsar
+            <span class="key">4</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="controls-section">
+        <div class="section-title">Speed</div>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <input id="speed-range" type="range" min="1" max="60" value="12" />
+          <span id="speed-label" style="font-size:0.8rem; color:var(--muted);">12 gen/s</span>
+        </div>
+      </div>
+
+      <div class="controls-section">
+        <div class="section-title">Keyboard</div>
+        <div class="kbd-row">
+          <span class="kbd">Space</span><span class="kbd-desc">start/stop</span>
+          <span class="kbd">R</span><span class="kbd-desc">random</span>
+          <span class="kbd">C</span><span class="kbd-desc">clear</span>
+          <span class="kbd">1</span><span class="kbd-desc">Glider tool</span>
+          <span class="kbd">2</span><span class="kbd-desc">LWSS tool</span>
+          <span class="kbd">3</span><span class="kbd-desc">Blinker tool</span>
+          <span class="kbd">4</span><span class="kbd-desc">Pulsar tool</span>
+          <span class="kbd">Click</span><span class="kbd-desc">place / toggle cells</span>
+        </div>
+      </div>
+
+      <div class="info">
+        Rules: Any live cell with 2–3 neighbors survives; dead cell with exactly 3 neighbors becomes alive; otherwise it dies or stays dead.  
+        The grid wraps around edges (toroidal), so patterns can traverse borders seamlessly.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // --- Configuration ---
+      const COLS = 72;
+      const ROWS = 48;
+      const CANVAS_WIDTH = 720;
+      const CANVAS_HEIGHT = 480;
+      const GRID_COLOR = "#1e293b33";
+      const DEAD_COLOR = "#020617";
+      const ALIVE_COLOR = "#38bdf8";
+
+      const canvas = document.getElementById("lifeCanvas");
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = CANVAS_WIDTH;
+      canvas.height = CANVAS_HEIGHT;
+
+      const cellWidth = CANVAS_WIDTH / COLS;
+      const cellHeight = CANVAS_HEIGHT / ROWS;
+
+      let grid = createEmptyGrid();
+      let buffer = createEmptyGrid();
+      let running = false;
+      let generation = 0;
+      let aliveCount = 0;
+      let lastTimestamp = 0;
+      let speed = 12; // generations per second
+
+      const statusText = document.getElementById("status-text");
+      const statsText = document.getElementById("stats-text");
+      const toggleBtn = document.getElementById("toggle-btn");
+      const toggleLabel = document.getElementById("toggle-label");
+      const randomBtn = document.getElementById("random-btn");
+      const clearBtn = document.getElementById("clear-btn");
+      const stepBtn = document.getElementById("step-btn");
+      const speedRange = document.getElementById("speed-range");
+      const speedLabel = document.getElementById("speed-label");
+      const patternButtons = Array.from(document.querySelectorAll(".pattern-btn"));
+
+      let currentPattern = "none";
+
+      // --- Utility functions ---
+
+      function createEmptyGrid() {
+        const arr = new Array(ROWS);
+        for (let y = 0; y < ROWS; y++) {
+          arr[y] = new Array(COLS).fill(0);
+        }
+        return arr;
+      }
+
+      function randomizeGrid() {
+        for (let y = 0; y < ROWS; y++) {
+          for (let x = 0; x < COLS; x++) {
+            grid[y][x] = Math.random() < 0.25 ? 1 : 0;
+          }
+        }
+        generation = 0;
+        recalcAliveCount();
+        draw();
+        updateStatus();
+      }
+
+      function clearGrid() {
+        for (let y = 0; y < ROWS; y++) {
+          grid[y].fill(0);
+        }
+        generation = 0;
+        aliveCount = 0;
+        draw();
+        updateStatus();
+      }
+
+      function recalcAliveCount() {
+        let count = 0;
+        for (let y = 0; y < ROWS; y++) {
+          for (let x = 0; x < COLS; x++) {
+            if (grid[y][x]) count++;
+          }
+        }
+        aliveCount = count;
+      }
+
+      function countNeighborsToroidal(x, y) {
+        let count = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = (x + dx + COLS) % COLS;
+            const ny = (y + dy + ROWS) % ROWS;
+            count += grid[ny][nx];
+          }
+        }
+        return count;
+      }
+
+      function step() {
+        // Compute next generation into buffer
+        for (let y = 0; y < ROWS; y++) {
+          for (let x = 0; x < COLS; x++) {
+            const neighbors = countNeighborsToroidal(x, y);
+            const alive = grid[y][x] === 1;
+            let next = 0;
+
+            if (alive && (neighbors === 2 || neighbors === 3)) {
+              next = 1;
+            } else if (!alive && neighbors === 3) {
+              next = 1;
+            } else {
+              next = 0;
+            }
+
+            buffer[y][x] = next;
+          }
+        }
+
+        // Swap grids
+        const tmp = grid;
+        grid = buffer;
+        buffer = tmp;
+
+        generation++;
+        recalcAliveCount();
+        draw();
+        updateStatus();
+      }
+
+      function draw() {
+        ctx.fillStyle = DEAD_COLOR;
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+        // Draw alive cells
+        ctx.fillStyle = ALIVE_COLOR;
+        for (let y = 0; y < ROWS; y++) {
+          for (let x = 0; x < COLS; x++) {
+            if (grid[y][x]) {
+              const px = x * cellWidth;
+              const py = y * cellHeight;
+              ctx.fillRect(
+                px + 0.5,
+                py + 0.5,
+                cellWidth - 1,
+                cellHeight - 1
+              );
+            }
+          }
+        }
+
+        // Draw grid lines
+        ctx.strokeStyle = GRID_COLOR;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let x = 0; x <= COLS; x++) {
+          const px = Math.round(x * cellWidth) + 0.5;
+          ctx.moveTo(px, 0);
+          ctx.lineTo(px, CANVAS_HEIGHT);
+        }
+        for (let y = 0; y <= ROWS; y++) {
+          const py = Math.round(y * cellHeight) + 0.5;
+          ctx.moveTo(0, py);
+          ctx.lineTo(CANVAS_WIDTH, py);
+        }
+        ctx.stroke();
+      }
+
+      function updateStatus() {
+        statusText.textContent = running ? "Running" : "Stopped";
+        statsText.textContent = `Gen: ${generation} · Alive: ${aliveCount}`;
+        toggleLabel.textContent = running ? "Pause" : "Start";
+      }
+
+      function setRunning(value) {
+        running = value;
+        updateStatus();
+      }
+
+      function animationLoop(timestamp) {
+        if (!lastTimestamp) lastTimestamp = timestamp;
+        const delta = timestamp - lastTimestamp;
+        const interval = 1000 / speed;
+
+        if (running && delta >= interval) {
+          step();
+          lastTimestamp = timestamp;
+        }
+
+        requestAnimationFrame(animationLoop);
+      }
+
+      function getCellFromCoords(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        if (x < 0 || y < 0 || x >= rect.width || y >= rect.height) {
+          return null;
+        }
+
+        const cellX = Math.floor((x / rect.width) * COLS);
+        const cellY = Math.floor((y / rect.height) * ROWS);
+        return { x: cellX, y: cellY };
+      }
+
+      // --- Patterns (relative coordinates around click position) ---
+
+      const PATTERNS = {
+        none: [],
+        glider: [
+          // classic glider, top-left at (0,0)
+          { x: 1, y: 0 },
+          { x: 2, y: 1 },
+          { x: 0, y: 2 },
+          { x: 1, y: 2 },
+          { x: 2, y: 2 },
+        ],
+        lwss: [
+          // Lightweight spaceship, 5x4
+          { x: 1, y: 0 },
+          { x: 4, y: 0 },
+          { x: 0, y: 1 },
+          { x: 0, y: 2 },
+          { x: 4, y: 2 },
+          { x: 0, y: 3 },
+          { x: 1, y: 3 },
+          { x: 2, y: 3 },
+          { x: 3, y: 3 },
+        ],
+        blinker: [
+          { x: -1, y: 0 },
+          { x: 0, y: 0 },
+          { x: 1, y: 0 },
+        ],
+        pulsar: [
+          // Pulsar (period 3 oscillator), radius 6
+          // We'll define upper-left quadrant and mirror
+        ],
+      };
+
+      // Build pulsar pattern (13x13, center at click)
+      (function buildPulsar() {
+        const baseOffsets = [
+          [2, 0], [3, 0], [4, 0],
+          [0, 2], [0, 3], [0, 4],
+          [5, 2], [5, 3], [5, 4],
+          [2, 5], [3, 5], [4, 5],
+        ];
+        const points = new Set();
+
+        function addPoint(x, y) {
+          points.add(`${x},${y}`);
+        }
+
+        baseOffsets.forEach(([dx, dy]) => {
+          const variants = [
+            [dx, dy],
+            [-dx, dy],
+            [dx, -dy],
+            [-dx, -dy],
+            [dy, dx],
+            [-dy, dx],
+            [dy, -dx],
+            [-dy, -dx],
+          ];
+          variants.forEach(([vx, vy]) => addPoint(vx, vy));
+        });
+
+        PATTERNS.pulsar = Array.from(points).map(str => {
+          const [sx, sy] = str.split(",").map(Number);
+          return { x: sx, y: sy };
+        });
+      })();
+
+      function placePattern(patternName, cx, cy) {
+        const relCells = PATTERNS[patternName] || [];
+        relCells.forEach(({ x, y }) => {
+          // wraparound placement so large patterns still work near borders
+          const nx = (cx + x + COLS) % COLS;
+          const ny = (cy + y + ROWS) % ROWS;
+          grid[ny][nx] = 1;
+        });
+        recalcAliveCount();
+        draw();
+        updateStatus();
+      }
+
+      function toggleCell(x, y) {
+        grid[y][x] = grid[y][x] ? 0 : 1;
+        recalcAliveCount();
+        draw();
+        updateStatus();
+      }
+
+      function selectPattern(name) {
+        currentPattern = name;
+        patternButtons.forEach(btn => {
+          if (btn.dataset.pattern === name) {
+            btn.classList.add("selected");
+          } else {
+            btn.classList.remove("selected");
+          }
+        });
+      }
+
+      // --- Event listeners ---
+
+      canvas.addEventListener("click", (e) => {
+        const cell = getCellFromCoords(e.clientX, e.clientY);
+        if (!cell) return;
+        const { x, y } = cell;
+
+        if (currentPattern === "none") {
+          toggleCell(x, y);
+        } else {
+          placePattern(currentPattern, x, y);
+        }
+      });
+
+      toggleBtn.addEventListener("click", () => {
+        setRunning(!running);
+      });
+
+      randomBtn.addEventListener("click", () => {
+        randomizeGrid();
+      });
+
+      clearBtn.addEventListener("click", () => {
+        clearGrid();
+      });
+
+      stepBtn.addEventListener("click", () => {
+        if (!running) {
+          step();
+        }
+      });
+
+      speedRange.addEventListener("input", () => {
+        speed = Number(speedRange.value);
+        speedLabel.textContent = `${speed} gen/s`;
+      });
+
+      patternButtons.forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          selectPattern(btn.dataset.pattern);
+        });
+      });
+
+      // Keyboard controls
+      window.addEventListener("keydown", (e) => {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
+          return;
+        }
+
+        if (e.code === "Space") {
+          e.preventDefault();
+          setRunning(!running);
+        } else if (e.key === "r" || e.key === "R") {
+          randomizeGrid();
+        } else if (e.key === "c" || e.key === "C") {
+          clearGrid();
+        } else if (e.key === "1") {
+          selectPattern("glider");
+        } else if (e.key === "2") {
+          selectPattern("lwss");
+        } else if (e.key === "3") {
+          selectPattern("blinker");
+        } else if (e.key === "4") {
+          selectPattern("pulsar");
+        }
+      });
+
+      // --- Init ---
+      const patternNoneBtn = document.getElementById("pattern-none-btn");
+      if (patternNoneBtn) {
+        patternNoneBtn.classList.add("selected");
+      }
+      selectPattern("none");
+      draw();
+      updateStatus();
+      requestAnimationFrame(animationLoop);
+    })();
+  </script>
+</body>
+</html>
